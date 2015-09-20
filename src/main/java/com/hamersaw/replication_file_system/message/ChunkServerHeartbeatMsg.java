@@ -1,11 +1,11 @@
-package com.hamersaw.distributed_file_system.message;
+package com.hamersaw.replication_file_system.message;
 
 import java.net.InetAddress;
 
 import java.util.List;
 import java.util.Map;
 
-import com.hamersaw.distributed_file_system.ChunkServerMetadata;
+import com.hamersaw.replication_file_system.ChunkServerMetadata;
 
 public class ChunkServerHeartbeatMsg extends Message {
 	private ChunkServerMetadata chunkServerMetadata;

@@ -1,4 +1,4 @@
-package com.hamersaw.distributed_file_system;
+package com.hamersaw.replication_file_system;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -8,13 +8,13 @@ import java.net.Socket;
 import java.util.List;
 import java.util.logging.Logger;
 
-import com.hamersaw.distributed_file_system.message.ErrorMsg;
-import com.hamersaw.distributed_file_system.message.ChunkServerHeartbeatMsg;
-import com.hamersaw.distributed_file_system.message.DataCorruptionMsg;
-import com.hamersaw.distributed_file_system.message.ForwardChunkMsg;
-import com.hamersaw.distributed_file_system.message.Message;
-import com.hamersaw.distributed_file_system.message.RequestChunkServerMsg;
-import com.hamersaw.distributed_file_system.message.ReplyChunkServerMsg;
+import com.hamersaw.replication_file_system.message.ErrorMsg;
+import com.hamersaw.replication_file_system.message.ChunkServerHeartbeatMsg;
+import com.hamersaw.replication_file_system.message.DataCorruptionMsg;
+import com.hamersaw.replication_file_system.message.ForwardChunkMsg;
+import com.hamersaw.replication_file_system.message.Message;
+import com.hamersaw.replication_file_system.message.RequestChunkServerMsg;
+import com.hamersaw.replication_file_system.message.ReplyChunkServerMsg;
 
 public class ControllerWorker implements Runnable {
 	private static Logger LOGGER = Logger.getLogger(ControllerWorker.class.getCanonicalName());

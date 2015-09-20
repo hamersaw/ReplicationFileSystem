@@ -1,4 +1,4 @@
-package com.hamersaw.distributed_file_system;
+package com.hamersaw.replication_file_system;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -18,12 +18,12 @@ import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import com.hamersaw.distributed_file_system.message.ControllerHeartbeatMsg;
-import com.hamersaw.distributed_file_system.message.ErrorMsg;
-import com.hamersaw.distributed_file_system.message.ForwardChunkMsg;
-import com.hamersaw.distributed_file_system.message.Message;
-import com.hamersaw.distributed_file_system.message.RequestChunkServerMsg;
-import com.hamersaw.distributed_file_system.message.ReplyChunkServerMsg;
+import com.hamersaw.replication_file_system.message.ControllerHeartbeatMsg;
+import com.hamersaw.replication_file_system.message.ErrorMsg;
+import com.hamersaw.replication_file_system.message.ForwardChunkMsg;
+import com.hamersaw.replication_file_system.message.Message;
+import com.hamersaw.replication_file_system.message.RequestChunkServerMsg;
+import com.hamersaw.replication_file_system.message.ReplyChunkServerMsg;
 
 public class Controller implements Runnable {
 	private static final Logger LOGGER = Logger.getLogger(Controller.class.getCanonicalName());

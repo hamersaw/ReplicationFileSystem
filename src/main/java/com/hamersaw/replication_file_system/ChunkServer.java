@@ -1,4 +1,4 @@
-package com.hamersaw.distributed_file_system;
+package com.hamersaw.replication_file_system;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -23,15 +23,15 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import com.hamersaw.distributed_file_system.message.ErrorMsg;
-import com.hamersaw.distributed_file_system.message.Message;
-import com.hamersaw.distributed_file_system.message.ChunkServerHeartbeatMsg;
-import com.hamersaw.distributed_file_system.message.DataCorruptionMsg;
-import com.hamersaw.distributed_file_system.message.ForwardChunkMsg;
-import com.hamersaw.distributed_file_system.message.ReplyChunkMsg;
-import com.hamersaw.distributed_file_system.message.ReplyChunkServerMsg;
-import com.hamersaw.distributed_file_system.message.RequestChunkMsg;
-import com.hamersaw.distributed_file_system.message.RequestChunkServerMsg;
+import com.hamersaw.replication_file_system.message.ErrorMsg;
+import com.hamersaw.replication_file_system.message.Message;
+import com.hamersaw.replication_file_system.message.ChunkServerHeartbeatMsg;
+import com.hamersaw.replication_file_system.message.DataCorruptionMsg;
+import com.hamersaw.replication_file_system.message.ForwardChunkMsg;
+import com.hamersaw.replication_file_system.message.ReplyChunkMsg;
+import com.hamersaw.replication_file_system.message.ReplyChunkServerMsg;
+import com.hamersaw.replication_file_system.message.RequestChunkMsg;
+import com.hamersaw.replication_file_system.message.RequestChunkServerMsg;
 
 class ChunkServer implements Runnable {
 	private static final Logger LOGGER = Logger.getLogger(ChunkServer.class.getCanonicalName());

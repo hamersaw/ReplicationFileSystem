@@ -1,8 +1,8 @@
-package com.hamersaw.distributed_file_system.message;
+package com.hamersaw.replication_file_system.message;
 
 import java.util.List;
 
-import com.hamersaw.distributed_file_system.ChunkServerMetadata;
+import com.hamersaw.replication_file_system.ChunkServerMetadata;
 
 public class ReplyChunkServerMsg extends Message {
 	private List<ChunkServerMetadata> chunkServers;

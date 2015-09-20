@@ -1,4 +1,4 @@
-package com.hamersaw.distributed_file_system.message;
+package com.hamersaw.replication_file_system.message;
 
 import java.net.InetAddress;
 

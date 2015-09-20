@@ -1,4 +1,4 @@
-package com.hamersaw.distributed_file_system;
+package com.hamersaw.replication_file_system;
 
 import java.io.Serializable;
 
