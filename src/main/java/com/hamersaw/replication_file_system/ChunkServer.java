@@ -15,6 +15,8 @@ import java.net.Socket;
 
 import java.security.MessageDigest;
 
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -41,6 +43,7 @@ class ChunkServer implements Runnable {
 	protected boolean stopped;
 	protected Map<String,List<Integer>> chunks, newChunks;
 	protected ServerSocket serverSocket;
+	private ReadWriteLock readWriteLock;
 
 	public ChunkServer(String storageDirectory, String controllerHostName, int controllerPort, int port) {
 		this.storageDirectory = storageDirectory;
@@ -50,6 +53,7 @@ class ChunkServer implements Runnable {
 		stopped = false;
 		chunks = new HashMap<String,List<Integer>>();
 		newChunks = new HashMap<String,List<Integer>>();
+		readWriteLock = new ReentrantReadWriteLock();
 	}
 
 	public static void main(String[] args) {
@@ -91,96 +95,102 @@ class ChunkServer implements Runnable {
 	}
 
 	public synchronized void writeChunk(String filename, int chunkNum, int length, byte[] bytes, boolean eof, long timestamp) throws Exception{
-		//search for filename
-		List<Integer> chunkList;
-		if(chunks.containsKey(filename)) {
-			chunkList = chunks.get(filename);
-		} else {
-			chunkList = new LinkedList<Integer>();
-			chunks.put(filename, chunkList);
-		}
+		readWriteLock.writeLock().lock();
+		try {
+			//search for filename
+			List<Integer> chunkList;
+			if(chunks.containsKey(filename)) {
+				chunkList = chunks.get(filename);
+			} else {
+				chunkList = new LinkedList<Integer>();
+				chunks.put(filename, chunkList);
+			}
 
-		//search for chunk number
-		int version = 1;
-		if(chunkList.contains(chunkNum)) {
-			//check timestamp in file and increase version number and rewrite if need be
-			try {
-				File file = new File(storageDirectory + filename + "_chunk" + chunkNum);
-				DataInputStream in = new DataInputStream(new FileInputStream(file));
+			//search for chunk number
+			int version = 1;
+			if(chunkList.contains(chunkNum)) {
+				//check timestamp in file and increase version number and rewrite if need be
+				try {
+					File file = new File(getFilename(storageDirectory, filename, chunkNum));
+					DataInputStream in = new DataInputStream(new FileInputStream(file));
 
-				version = in.readInt();
-				long chunkTimestamp = in.readLong();
-				in.close();
+					version = in.readInt();
+					long chunkTimestamp = in.readLong();
+					in.close();
 
-				if(chunkTimestamp < timestamp) {
-					version++;
-					file.delete();
-				} else {
+					if(chunkTimestamp < timestamp) {
+						version++;
+						file.delete();
+					} else {
+						return;
+					}
+				} catch(Exception e) {
 					return;
 				}
-			} catch(Exception e) {
-				return;
+			} else {
+				chunkList.add(chunkNum);
 			}
-		} else {
+
+			//add to newChunks for minor heartbeat update
+			if(newChunks.containsKey(filename)) {
+				chunkList = newChunks.get(filename);
+			} else {
+				chunkList = new LinkedList<Integer>();
+				newChunks.put(filename, chunkList);
+			}
+
 			chunkList.add(chunkNum);
-		}
-
-		//add to newChunks for minor heartbeat update
-		if(newChunks.containsKey(filename)) {
-			chunkList = newChunks.get(filename);
-		} else {
-			chunkList = new LinkedList<Integer>();
-			newChunks.put(filename, chunkList);
-		}
-
-		chunkList.add(chunkNum);
-
-		//create new file if needed
-		File file = new File(storageDirectory + filename + "_chunk" + chunkNum);
-		file.getParentFile().mkdirs();
-		DataOutputStream out = new DataOutputStream(new FileOutputStream(file));
+	
+			//create new file if needed
+			File file = new File(getFilename(storageDirectory, filename, chunkNum));
+			file.getParentFile().mkdirs();
+			DataOutputStream out = new DataOutputStream(new FileOutputStream(file));
 		
-		//write out metadata
-		out.writeInt(version);
-		out.writeLong(timestamp);
-		out.writeInt(chunkNum);
-		out.writeInt(length);
-		out.writeBoolean(eof);
+			//write out metadata
+			out.writeInt(version);
+			out.writeLong(timestamp);
+			out.writeInt(chunkNum);
+			out.writeInt(length);
+			out.writeBoolean(eof);
 
-		//write bytes and interlacing SHA1 digests
-		MessageDigest messageDigest = MessageDigest.getInstance("SHA1");
-		int i=0;
-		for(i=0; i<length; i++) {
-			out.writeByte(bytes[i]);
-			messageDigest.update(bytes[i]);
+			//write bytes and interlacing SHA1 digests
+			MessageDigest messageDigest = MessageDigest.getInstance("SHA1");
+			int i=0;
+			for(i=0; i<length; i++) {
+				out.writeByte(bytes[i]);
+				messageDigest.update(bytes[i]);
 
-			if(i % DIGEST_LENGTH == 0) {
+				if(i % DIGEST_LENGTH == 0) {
+					for(byte b : messageDigest.digest()) {
+						out.writeByte(b);
+					}
+	
+					messageDigest.reset();
+				}
+			}
+
+			if(i % DIGEST_LENGTH != 0) {
 				for(byte b : messageDigest.digest()) {
 					out.writeByte(b);
 				}
-
-				messageDigest.reset();
 			}
-		}
 
-		if(i % DIGEST_LENGTH != 0) {
-			for(byte b : messageDigest.digest()) {
-				out.writeByte(b);
-			}
+			LOGGER.info("Wrote chunk '" + filename + ":" + chunkNum + "' - length:" + length + " eof:" + eof + " timestamp:" + timestamp);
+			out.close();
+		} finally {
+			readWriteLock.writeLock().unlock();
 		}
-
-		LOGGER.info("Wrote chunk '" + filename + ":" + chunkNum + "' - length:" + length + " eof:" + eof + " timestamp:" + timestamp);
-		out.close();
 	}
 
 	public synchronized Message requestChunk(String filename, int chunkNum) throws Exception {
-		if(!chunks.containsKey(filename) || (!chunks.get(filename).contains(chunkNum))) {
-			throw new Exception("Chunk server doesn't contain chunk '" + filename + ":" + chunkNum + "'");
-		}
-
-		//read in metadata
+		readWriteLock.readLock().lock();
 		try {
-			DataInputStream in = new DataInputStream(new FileInputStream(storageDirectory + filename + "_chunk" + chunkNum));
+			if(!chunks.containsKey(filename) || (!chunks.get(filename).contains(chunkNum))) {
+				throw new Exception("Chunk server doesn't contain chunk '" + filename + ":" + chunkNum + "'");
+			}
+
+			//read in metadata
+			DataInputStream in = new DataInputStream(new FileInputStream(getFilename(storageDirectory, filename, chunkNum)));
 			int version = in.readInt();
 			long timestamp = in.readLong();
 			int chunkNumber = in.readInt();
@@ -237,6 +247,8 @@ class ChunkServer implements Runnable {
 			//start chunk fix thread
 			new Thread(new ChunkServerFixChunk(filename, chunkNum)).start();
 			throw new Exception("Data corruption detected in chunk '" + filename + ":" + chunkNum + "'");
+		} finally {
+			readWriteLock.readLock().unlock();
 		}
 	}
 
@@ -259,6 +271,7 @@ class ChunkServer implements Runnable {
 
 		@Override
 		public void run() {
+			readWriteLock.writeLock().lock();
 			try {
 				//delete chunk locally
 				List<Integer> chunkList = chunks.get(filename);
@@ -272,7 +285,7 @@ class ChunkServer implements Runnable {
 					chunks.remove(filename);
 				}
 
-				File file = new File(storageDirectory + filename + "_chunk" + chunkNum);
+				File file = new File(getFilename(storageDirectory, filename, chunkNum));
 				file.delete();
 
 				//send data corruption message to controller
@@ -284,8 +297,18 @@ class ChunkServer implements Runnable {
 
 				socket.close();
 			} catch(Exception e) {
-				e.printStackTrace();
+				LOGGER.severe(e.getMessage());
+			} finally {
+				readWriteLock.writeLock().unlock();
 			}
+		}
+	}
+
+	private String getFilename(String storageDirectory, String filename, int chunkNum) {
+		if(filename.charAt(0) == File.separatorChar) {
+			return storageDirectory + filename + "_chunk" + chunkNum;
+		} else {
+			return storageDirectory + File.separatorChar + filename + "_chunk" + chunkNum;
 		}
 	}
 

@@ -121,10 +121,25 @@ public class Client {
 					try {
 						System.out.print("\tFilename:");
 						filename = scanner.nextLine();
-						in = new FileInputStream(new File(filename));
 
 						System.out.print("\tOutputDirectory:");
-						File file = new File(scanner.nextLine() + filename);
+						String directory = scanner.nextLine();
+						
+						File file;
+						if(directory.endsWith(File.separator)) {
+							if(filename.startsWith(File.separator)) {
+								file = new File(directory.substring(0, directory.length() - 2));
+							} else {
+								file = new File(directory + filename);
+							}
+						} else {
+							if(filename.startsWith(File.separator)) {
+								file = new File(directory + filename);
+							} else {
+								file = new File(directory + File.separator + filename);
+							}
+						}
+
 						file.getParentFile().mkdirs();
 						out = new FileOutputStream(file);
 					} catch(FileNotFoundException e) {
